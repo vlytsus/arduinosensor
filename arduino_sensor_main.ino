@@ -4,16 +4,13 @@
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
-int prev = 0;
-int cur = 0;
-
-#define MIN_VOLTAGE_IF_NO_DUST     600
+#define MIN_VOLTAGE_IF_NO_DUST     600 //mv
 //#define COMPARATOR_UPPER_VOLTAGE 5000
-#define COMPARATOR_UPPER_VOLTAGE   1100
+#define COMPARATOR_UPPER_VOLTAGE   1100 //mv
 
 #define ADC_RESOLUTION   1023.0
-#define DIV_CORRECTION  11.0
-#define MGVOLT  0.2
+#define DIV_CORRECTION  11.0    //WaveShare board has voltage 1/10 divider
+#define UG2MV_RATIO  0.2        //ug/m3 / mv
 
 #define PIN_LED          7
 #define PIN_ANALOG_OUT   0
@@ -29,22 +26,16 @@ int cur = 0;
 
 #define LCD_PRINT true
 #define SERIAL_PRINT true
+#define SERIAL_PRINT true
 
-float stack[STACK_SIZE+1];
-int stackIter;
-int refresh; 
+#define RAW_OUTPUT_MODE true //if true then raw analog data 0-1023 will be printed
 
-int analogData;
-float voltage;
-float dustVal;
-float avgDust;
-float maxDust;
-float minDust;
-float midVal;
+//if RAW_OUTPUT_MODE = false then correction will be performed to calculate dust as ug/m3
+float correction = DIV_CORRECTION * COMPARATOR_UPPER_VOLTAGE / ADC_RESOLUTION;
 
-//correction to convert analog input to ug/m3
-//float correction = DIV_CORRECTION * COMPARATOR_UPPER_VOLTAGE / ADC_RESOLUTION;
-float correction = 1;
+float stack[STACK_SIZE+1];//stack is used to calculate middle value for display output
+int stackIter; //current stack iteration
+int refresh; //current display counter, used to not print data too frequently
 
 char str_temp[6];
  
@@ -75,13 +66,33 @@ void setup() {
 }
 
 void loop(void){
-   avgDust = 0;
-   maxDust = 0;
-   minDust = 1000;
-   
+
    if(stackIter >= STACK_SIZE)
      stackIter = 0;
- 
+     
+   stack[stackIter] = computeSensorSequence();
+  
+   if(refresh < DISPLAY_REFRESH_INTERVAL){
+     refresh++;
+   }else{
+     refresh = 0;
+     //calculate midpoint value and print
+     print(calculateStackMidVal());
+   }
+
+   stackIter++;
+}
+
+float computeSensorSequence(){
+  //perform several measurements and store to stack
+  //for later midpoint calculations
+
+   float maxDust = 0;
+   float minDust = 1000;
+   float avgDust = 0; 
+   float dustVal = 0;
+
+   //perform several sensor reads and calculate midpoint
    for(int i = 0; i< SAMPLES_PER_COMP; i++){
      dustVal = computeDust();
      if (dustVal > 0){
@@ -97,46 +108,42 @@ void loop(void){
      }
    }
 
+   //filter input data
    //don't take to consideration max & min values per sample
    //and save average to stack
-   stack[stackIter] = (avgDust - maxDust - minDust) / (SAMPLES_PER_COMP - 2);
-  
-   if(refresh < DISPLAY_REFRESH_INTERVAL){
-     refresh++;
-   }else{
-     refresh = 0;
-     print(calculateMidVal());
-   }
-
-   stackIter++;
+   return (avgDust - maxDust - minDust) / (SAMPLES_PER_COMP - 2);
 }
 
-float computeDust(){  
+float computeDust(){
+ 
+  if(RAW_OUTPUT_MODE)
+    return readRawSensorData();
   
+  float voltage = readRawSensorData() * correction;
+  if (voltage > MIN_VOLTAGE_IF_NO_DUST){
+    return (voltage - MIN_VOLTAGE_IF_NO_DUST) * UG2MV_RATIO;
+  }
+ 
+  return 0;
+}
+ 
+float calculateStackMidVal(){
+   float midVal = 0;
+   for(int i = 0; i < STACK_SIZE ; i++){
+     midVal += stack[i]; 
+   }
+   return midVal / STACK_SIZE;
+}
+
+int readRawSensorData(){
+  int analogData; //ADC value 0-1023
   digitalWrite(PIN_LED, HIGH); // power on the LED
   delayMicroseconds(POWER_ON_LED_DELAY);
   analogData = analogRead(SENSOR_PIN);
   delayMicroseconds(POWER_ON_LED_SLEEP);
   digitalWrite(PIN_LED, LOW); // power off the LED
   delayMicroseconds(POWER_OFF_LED_DELAY);
-
-  if(correction == 1.0)
-    return analogData;
-    
-  voltage = analogData * correction;
-  if (voltage > MIN_VOLTAGE_IF_NO_DUST){
-    return (voltage - MIN_VOLTAGE_IF_NO_DUST) * MGVOLT;
-  }
- 
-  return 0;
-}
- 
-float calculateMidVal(){
-   float midVal = 0;
-   for(int i = 0; i < STACK_SIZE ; i++){
-     midVal += stack[i]; 
-   }
-   return midVal / STACK_SIZE;
+  return analogData; 
 }
 
 void print(float val){
