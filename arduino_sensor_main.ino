@@ -27,6 +27,9 @@ int cur = 0;
 #define STACK_SIZE 100
 #define DISPLAY_REFRESH_INTERVAL 20
 
+#define LCD_PRINT false
+#define SERIAL_PRINT true
+
 float stack[STACK_SIZE+1];
 int stackIter;
 int refresh; 
@@ -45,13 +48,13 @@ float correction = DIV_CORRECTION * COMPARATOR_UPPER_VOLTAGE / ADC_RESOLUTION;
 char str_temp[6];
  
 void setup() {
-  //Serial.begin(9600);
-  
-  // set up the LCD's number of columns and rows: 
-  lcd.begin(16, 2);
-  // Print a message to the LCD.
-  lcd.print("-=Dust+Sensor=-");
-  lcd.setCursor(0, 1);
+
+  if(LCD_PRINT){
+    // set up the LCD's number of columns and rows: 
+    lcd.begin(16, 2);
+    // Print a message to the LCD.
+    lcd.print("-=Dust+Sensor=-");
+  }
   
   if(COMPARATOR_UPPER_VOLTAGE < 4000)
     analogReference(INTERNAL);
@@ -65,6 +68,9 @@ void setup() {
   for(int i = 0; i < STACK_SIZE ; i++){
      stack[i] = 0; 
   }
+
+  if(SERIAL_PRINT)
+    Serial.begin(9600);
 }
 
 void loop(void){
@@ -136,7 +142,10 @@ void print(float val){
 }
 
 void print(String msg){
-   //Serial.println(msg);
+  if(SERIAL_PRINT)
+    Serial.println(msg);
+  if(LCD_PRINT){
    lcd.setCursor(0, 1);
    lcd.print(msg);
+  }
 }
