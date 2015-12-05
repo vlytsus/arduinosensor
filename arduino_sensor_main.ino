@@ -120,8 +120,8 @@ float computeDust(){
   digitalWrite(PIN_LED, LOW); // power off the LED
   delayMicroseconds(POWER_OFF_LED_DELAY);
 
-  if(correction == 1)
-    return voltage;
+  if(correction == 1.0)
+    return analogData;
     
   voltage = analogData * correction;
   if (voltage > MIN_VOLTAGE_IF_NO_DUST){
