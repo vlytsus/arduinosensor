@@ -23,38 +23,45 @@ int cur = 0;
 #define POWER_OFF_LED_DELAY 9680
 #define SENSOR_PIN 0
 
-#define SAMPLES_PER_COMP        5
+#define SAMPLES_PER_COMP 5
 #define STACK_SIZE 100
 #define DISPLAY_REFRESH_INTERVAL 20
 
-float stack[STACK_SIZE];
-int iter = 0;
-int refresh = 0; 
+float stack[STACK_SIZE+1];
+int stackIter;
+int refresh; 
 
-int iteration;
+int analogData;
 float voltage;
 float dustVal;
 float avgDust;
 float maxDust;
 float minDust;
+float midVal;
+
+//correction to convert analog input to ug/m3
 float correction = DIV_CORRECTION * COMPARATOR_UPPER_VOLTAGE / ADC_RESOLUTION;
+
 char str_temp[6];
  
 void setup() {
+  //Serial.begin(9600);
+  
   // set up the LCD's number of columns and rows: 
   lcd.begin(16, 2);
   // Print a message to the LCD.
-  lcd.print("Dust Sensor :) 4");
+  lcd.print("-=Dust+Sensor=-");
+  lcd.setCursor(0, 1);
   
   if(COMPARATOR_UPPER_VOLTAGE < 4000)
     analogReference(INTERNAL);
- 
-  //Serial.begin(9600);
  
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_ANALOG_OUT, INPUT);
   digitalWrite(PIN_LED, LOW);
 
+  stackIter = 0;
+  refresh = 0; 
   for(int i = 0; i < STACK_SIZE ; i++){
      stack[i] = 0; 
   }
@@ -64,53 +71,50 @@ void loop(void){
    avgDust = 0;
    maxDust = 0;
    minDust = 1000;
-   iteration = 0;
+   
+   if(stackIter >= STACK_SIZE)
+     stackIter = 0;
  
-   while (iteration < SAMPLES_PER_COMP){
+   for(int i = 0; i< SAMPLES_PER_COMP; i++){
      dustVal = computeDust();
      if (dustVal > 0){
+
+      //find max dust per sample
       if(dustVal > maxDust)
         maxDust = dustVal;
 
+      //find min dust per sample
       if(dustVal < minDust)
-        minDust = dustVal;
-        
-       
-       avgDust += dustVal;
-       iteration++;
-     }     
+        minDust = dustVal;      
+        avgDust += dustVal;
+     }
    }
 
-   avgDust = (avgDust - maxDust - minDust) / (SAMPLES_PER_COMP - 2);
-   //avgDust = avgDust / SAMPLES_PER_COMP;
-   //Serial.println(avgDust);
-
-   stack[iter] = avgDust;
-   if(iter < STACK_SIZE){
-     iter++;
-   }else{
-     iter = 0;
-     //calculate();
-   }
-
+   //don't take to consideration max & min values per sample
+   //and save average to stack
+   stack[stackIter] = (avgDust - maxDust - minDust) / (SAMPLES_PER_COMP - 2);
+  
    if(refresh < DISPLAY_REFRESH_INTERVAL){
      refresh++;
    }else{
      refresh = 0;
-     calculateMidVal();
+     print(calculateMidVal());
    }
+
+   stackIter++;
 }
 
 float computeDust(){  
   
   digitalWrite(PIN_LED, HIGH); // power on the LED
   delayMicroseconds(POWER_ON_LED_DELAY);
-  voltage = analogRead(SENSOR_PIN);
+  analogData = analogRead(SENSOR_PIN);
   delayMicroseconds(POWER_ON_LED_SLEEP);
   digitalWrite(PIN_LED, LOW); // power off the LED
   delayMicroseconds(POWER_OFF_LED_DELAY);
-   
-  voltage = voltage * correction;
+
+  //return voltage;
+  voltage = analogData * correction;
   if (voltage > MIN_VOLTAGE_IF_NO_DUST){
     return (voltage - MIN_VOLTAGE_IF_NO_DUST) * MGVOLT;
   }
@@ -118,25 +122,21 @@ float computeDust(){
   return 0;
 }
  
-void calculateMidVal(){
-
-float midVal = 0;
+float calculateMidVal(){
+   float midVal = 0;
    for(int i = 0; i < STACK_SIZE ; i++){
-     midVal+=stack[i]; 
+     midVal += stack[i]; 
    }
-   midVal /= STACK_SIZE;
-   
-   float_str(midVal, str_temp);   
-   print(str_temp);
+   return midVal / STACK_SIZE;
 }
 
-void float_str(float val, char* str){
-  char str_temp[6];
+void print(float val){
   dtostrf(val, 4, 1, str_temp);
-  sprintf(str, "%s", str_temp);
+  print(str_temp);
 }
 
 void print(String msg){
-   //Serial.print(msg);
+   //Serial.println(msg);
+   lcd.setCursor(0, 1);
    lcd.print(msg);
 }
