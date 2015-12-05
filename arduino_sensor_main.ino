@@ -27,7 +27,7 @@ int cur = 0;
 #define STACK_SIZE 100
 #define DISPLAY_REFRESH_INTERVAL 20
 
-#define LCD_PRINT false
+#define LCD_PRINT true
 #define SERIAL_PRINT true
 
 float stack[STACK_SIZE+1];
@@ -43,7 +43,8 @@ float minDust;
 float midVal;
 
 //correction to convert analog input to ug/m3
-float correction = DIV_CORRECTION * COMPARATOR_UPPER_VOLTAGE / ADC_RESOLUTION;
+//float correction = DIV_CORRECTION * COMPARATOR_UPPER_VOLTAGE / ADC_RESOLUTION;
+float correction = 1;
 
 char str_temp[6];
  
@@ -119,7 +120,9 @@ float computeDust(){
   digitalWrite(PIN_LED, LOW); // power off the LED
   delayMicroseconds(POWER_OFF_LED_DELAY);
 
-  //return voltage;
+  if(correction == 1)
+    return voltage;
+    
   voltage = analogData * correction;
   if (voltage > MIN_VOLTAGE_IF_NO_DUST){
     return (voltage - MIN_VOLTAGE_IF_NO_DUST) * MGVOLT;
