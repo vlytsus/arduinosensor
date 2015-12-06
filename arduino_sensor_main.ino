@@ -21,8 +21,8 @@
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
-#define MIN_VOLTAGE_IF_NO_DUST     400 //600/400 //mv   // 400 minimum voltage (close to clean)
-#define COMPARATOR_UPPER_VOLTAGE 4750 // 1100/5000 //mv  4500 - real USB voltage
+#define MIN_VOLTAGE_IF_NO_DUST     600/400 //mv   // 400 minimum voltage (close to clean)
+#define COMPARATOR_UPPER_VOLTAGE  1100/5000 //mv  4500 - real USB voltage
 #define UG2MV_RATIO  0.2        //ug/m3 / mv
 #define ADC_RESOLUTION   1023.0
 
@@ -35,7 +35,7 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 #define PIN_ANALOG_OUT   0
 
 #define POWER_ON_LED_DELAY 280
-#define POWER_ON_LED_SLEEP 0
+//#define POWER_ON_LED_SLEEP 40 //not used, digital read takes about 100 microseconds
 #define POWER_OFF_LED_DELAY 9500
 #define SENSOR_PIN 0
 
@@ -159,7 +159,7 @@ int readRawSensorData(){
   digitalWrite(PIN_LED, HIGH); // power on the LED
   delayMicroseconds(POWER_ON_LED_DELAY);
   analogData = analogRead(SENSOR_PIN);
-  //delayMicroseconds(POWER_ON_LED_SLEEP);// 0
+  //delayMicroseconds(POWER_ON_LED_SLEEP);//not used, digital read takes about 100 microseconds
   digitalWrite(PIN_LED, LOW); // power off the LED
   delayMicroseconds(POWER_OFF_LED_DELAY);//9500
   return analogData; 
