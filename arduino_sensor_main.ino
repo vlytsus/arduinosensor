@@ -13,7 +13,7 @@
  *  values transformation to ug/m2. Finaly calculated data could 
  *  be printed to Arduino serial output or to LCD display.
  *  ***************************************************************
- *  AQI Index could be clculated as
+ *  AQI Index could be calculated as
  *  --------------------------------
  *  PM2.5 ug |   AQI   |  Pollution
  *  =========|=========|============
