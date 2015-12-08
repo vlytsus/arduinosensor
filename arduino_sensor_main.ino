@@ -21,39 +21,45 @@
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
-#define MIN_VOLTAGE_IF_NO_DUST     600/400 //mv   // 400 minimum voltage (close to clean)
-#define COMPARATOR_UPPER_VOLTAGE  1100/5000 //mv  4500 - real USB voltage
-#define UG2MV_RATIO  0.2        //ug/m3 / mv
-#define ADC_RESOLUTION   1023.0
+#define MIN_VOLTAGE_IF_NO_DUST    600     //mv   // 400 minimum voltage (close to clean air)
+#define COMPARATOR_UPPER_VOLTAGE  1100.0    //5000 //mv  4500 - real USB voltage
+#define MICROGR_2_MLVOLT_RATIO    0.2     //ug/m3 / mv
+#define ADC_RESOLUTION            1023.0
 
 //WaveShare board has voltage 1/10 divider
 //ADC raw value should be corrected to compensate divider
 //if you use GP2Y1010AU0F sensor without WaveShare board then should be DIV_CORRECTION = 1
-#define DIV_CORRECTION  11.0 //11.0 //divider compensation
+#define DIV_CORRECTION            11   //11.0 //divider compensation
 
 #define PIN_LED          7
 #define PIN_ANALOG_OUT   0
 
-#define POWER_ON_LED_DELAY 280
-//#define POWER_ON_LED_SLEEP 40 //not used, digital read takes about 100 microseconds
-#define POWER_OFF_LED_DELAY 9500
-#define SENSOR_PIN 0
+#define POWER_ON_LED_DELAY   280
+//#define POWER_ON_LED_SLEEP   40 // not used, digital read takes about 100 microseconds
+#define POWER_OFF_LED_DELAY  9500
+#define SENSOR_PIN           0
 
-#define SAMPLES_PER_COMP 5
-#define STACK_SIZE 100
-#define DISPLAY_REFRESH_INTERVAL 20
+#define SAMPLES_PER_COMP     5
+#define STACK_SIZE           65
+#define DISPLAY_REFRESH_INTERVAL 30
 
-#define LCD_PRINT true
-#define SERIAL_PRINT false
-#define RAW_OUTPUT_MODE false //if true then raw analog data 0-1023 will be printed
+#define LCD_PRINT       true
+#define SERIAL_PRINT    true
+#define RAW_OUTPUT_MODE false // if true then raw analog data 0-1023 will be printed
 
 //if RAW_OUTPUT_MODE = false then correction will be performed to calculate dust as ug/m3
 
-float correction = DIV_CORRECTION * COMPARATOR_UPPER_VOLTAGE / ADC_RESOLUTION;
+// Additional correction after calibration 
+// by minimum & maximum values.
+// According to specification: min=600mv; max=3600mv
+// y = a*x + b;
+#define ACORRECTION 0.74
+#define BCORRECTION 450
+float correction = DIV_CORRECTION * (COMPARATOR_UPPER_VOLTAGE / ADC_RESOLUTION) * ACORRECTION;
 
-float stack[STACK_SIZE+1];//stack is used to calculate middle value for display output
-int stackIter; //current stack iteration
-int refresh; //current display counter, used to not print data too frequently
+unsigned int stack[STACK_SIZE+1];// stack is used to calculate middle value for display output
+unsigned int stackIter; // current stack iteration
+unsigned int refresh; // current display counter, used to not print data too frequently
 
 char str_temp[6];
  
@@ -101,14 +107,14 @@ void loop(void){
    stackIter++;
 }
 
-float computeSensorSequence(){
+unsigned int computeSensorSequence(){
   //perform several measurements and store to stack
   //for later midpoint calculations
 
-   float maxDust = 0;
-   float minDust = 1000;
-   float avgDust = 0; 
-   float dustVal = 0;
+   unsigned int maxDust = 0;
+   unsigned int minDust = 1000;
+   unsigned int avgDust = 0; 
+   unsigned int dustVal = 0;
 
    //perform several sensor reads and calculate midpoint
    for(int i = 0; i< SAMPLES_PER_COMP; i++){
@@ -132,30 +138,31 @@ float computeSensorSequence(){
    return (avgDust - maxDust - minDust) / (SAMPLES_PER_COMP - 2);
 }
 
-float computeDust(){
+unsigned int computeDust(){
  
-  if(RAW_OUTPUT_MODE){
-    return readRawSensorData();  
-  }
+  if(RAW_OUTPUT_MODE)
+    return readRawSensorData();
   
   float voltage = readRawSensorData() * correction;
+  voltage += BCORRECTION;
+  
   if (voltage > MIN_VOLTAGE_IF_NO_DUST){
-    return (voltage - MIN_VOLTAGE_IF_NO_DUST) * UG2MV_RATIO;
+    return (voltage - MIN_VOLTAGE_IF_NO_DUST) * MICROGR_2_MLVOLT_RATIO;
   }
  
   return 0;
 }
  
-float calculateStackMidVal(){
-   float midVal = 0;
+unsigned int calculateStackMidVal(){
+   int midVal = 0;
    for(int i = 0; i < STACK_SIZE ; i++){
      midVal += stack[i]; 
    }
    return midVal / STACK_SIZE;
 }
 
-int readRawSensorData(){
-  int analogData; //ADC value 0-1023
+unsigned int readRawSensorData(){
+  unsigned int analogData; //ADC value 0-1023
   digitalWrite(PIN_LED, HIGH); // power on the LED
   delayMicroseconds(POWER_ON_LED_DELAY);
   analogData = analogRead(SENSOR_PIN);
@@ -163,6 +170,10 @@ int readRawSensorData(){
   digitalWrite(PIN_LED, LOW); // power off the LED
   delayMicroseconds(POWER_OFF_LED_DELAY);//9500
   return analogData; 
+}
+
+void print(unsigned int val){
+  print(String(val));
 }
 
 void print(float val){
