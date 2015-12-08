@@ -13,6 +13,22 @@
  *  values transformation to ug/m2. Finaly calculated data could 
  *  be printed to Arduino serial output or to LCD display.
  *  ***************************************************************
+ *  AQI Index could be clculated as
+ *  --------------------------------
+ *  PM2.5 ug |   AQI   |  Pollution
+ *  =========|=========|============
+ *     0-35  |  0-50   |  Excelent
+ *  ---------|---------|------------
+ *    35-75  | 51-100  |  Average
+ *  ---------|---------|------------
+ *    75-115 | 101-150 |  Light
+ *  ---------|---------|------------
+ *   115-150 | 151-200 |  Modrate
+ *  ---------|---------|------------
+ *   150-250 | 201-300 |  Heavy
+ *  ---------|---------|------------
+ *   250-500 |  > 300  |  Serious
+ *  ---------|---------|------------
  */
 
 #include <LiquidCrystal.h>
@@ -48,8 +64,8 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 // According to specification: min=600mv; max=3600mv
 // using linear function: y = a*x + b;
 // here x is voltage = ADC_val * V_adc_base / ADC_resolution
-#define A_CORRECTION 2.35
-#define B_CORRECTION -70
+#define A_CORRECTION 2.36
+#define B_CORRECTION -76
 float a_correction = A_CORRECTION * (ADC_BASE_V / ADC_RESOLUTION);
 
 unsigned int stack[STACK_SIZE+1];// stack is used to calculate middle value for display output
