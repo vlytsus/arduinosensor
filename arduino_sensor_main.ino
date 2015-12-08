@@ -21,41 +21,36 @@
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
-#define MIN_VOLTAGE_IF_NO_DUST    600     //mv   // 400 minimum voltage (close to clean air)
-#define COMPARATOR_UPPER_VOLTAGE  1100.0    //5000 //mv  4500 - real USB voltage
+#define ADC_BASE_V  1100.0    //5000 //mv  4500 - real USB voltage
 #define MICROGR_2_MLVOLT_RATIO    0.2     //ug/m3 / mv
 #define ADC_RESOLUTION            1023.0
-
-//WaveShare board has voltage 1/10 divider
-//ADC raw value should be corrected to compensate divider
-//if you use GP2Y1010AU0F sensor without WaveShare board then should be DIV_CORRECTION = 1
-#define DIV_CORRECTION            11   //11.0 //divider compensation
 
 #define PIN_LED          7
 #define PIN_ANALOG_OUT   0
 
 #define POWER_ON_LED_DELAY   280
-//#define POWER_ON_LED_SLEEP   40 // not used, digital read takes about 100 microseconds
+//#define POWER_ON_LED_SLEEP 40 // not used, digital read takes about 100 microseconds
 #define POWER_OFF_LED_DELAY  9500
 #define SENSOR_PIN           0
 
-#define SAMPLES_PER_COMP     5
-#define STACK_SIZE           65
 #define DISPLAY_REFRESH_INTERVAL 30
+#define SAMPLES_PER_COMP     5
+#define STACK_SIZE           100
+#define MAX_UNSIGNED_INT     65535
 
 #define LCD_PRINT       true
 #define SERIAL_PRINT    true
 #define RAW_OUTPUT_MODE false // if true then raw analog data 0-1023 will be printed
 
-//if RAW_OUTPUT_MODE = false then correction will be performed to calculate dust as ug/m3
-
 // Additional correction after calibration 
+// to calculate dust as ug/m3
 // by minimum & maximum values.
 // According to specification: min=600mv; max=3600mv
-// y = a*x + b;
-#define ACORRECTION 0.74
-#define BCORRECTION 450
-float correction = DIV_CORRECTION * (COMPARATOR_UPPER_VOLTAGE / ADC_RESOLUTION) * ACORRECTION;
+// using linear function: y = a*x + b;
+// here x is voltage = ADC_val * V_adc_base / ADC_resolution
+#define A_CORRECTION 2.35
+#define B_CORRECTION -70
+float a_correction = A_CORRECTION * (ADC_BASE_V / ADC_RESOLUTION);
 
 unsigned int stack[STACK_SIZE+1];// stack is used to calculate middle value for display output
 unsigned int stackIter; // current stack iteration
@@ -72,7 +67,7 @@ void setup() {
     lcd.print("-=Dust+Sensor=-");
   }
   
-  if(COMPARATOR_UPPER_VOLTAGE < 4000)
+  if(ADC_BASE_V < 4000)
     analogReference(INTERNAL);
  
   pinMode(PIN_LED, OUTPUT);
@@ -101,7 +96,10 @@ void loop(void){
    }else{
      refresh = 0;
      //calculate midpoint value and print
-     print(calculateStackMidVal());
+     int yResult = a_correction * calculateStackMidVal() + B_CORRECTION;
+     if(yResult > 0){
+      print(yResult);
+     }
    }
 
    stackIter++;
@@ -112,13 +110,13 @@ unsigned int computeSensorSequence(){
   //for later midpoint calculations
 
    unsigned int maxDust = 0;
-   unsigned int minDust = 1000;
-   unsigned int avgDust = 0; 
+   unsigned int minDust = MAX_UNSIGNED_INT;
+   unsigned long avgDust = 0; 
    unsigned int dustVal = 0;
 
    //perform several sensor reads and calculate midpoint
    for(int i = 0; i< SAMPLES_PER_COMP; i++){
-     dustVal = computeDust();
+     dustVal = readRawSensorData();
      if (dustVal > 0){
 
       //find max dust per sample
@@ -136,21 +134,6 @@ unsigned int computeSensorSequence(){
    //don't take to consideration max & min values per sample
    //and save average to stack
    return (avgDust - maxDust - minDust) / (SAMPLES_PER_COMP - 2);
-}
-
-unsigned int computeDust(){
- 
-  if(RAW_OUTPUT_MODE)
-    return readRawSensorData();
-  
-  float voltage = readRawSensorData() * correction;
-  voltage += BCORRECTION;
-  
-  if (voltage > MIN_VOLTAGE_IF_NO_DUST){
-    return (voltage - MIN_VOLTAGE_IF_NO_DUST) * MICROGR_2_MLVOLT_RATIO;
-  }
- 
-  return 0;
 }
  
 unsigned int calculateStackMidVal(){
@@ -172,13 +155,8 @@ unsigned int readRawSensorData(){
   return analogData; 
 }
 
-void print(unsigned int val){
+void print(int val){
   print(String(val));
-}
-
-void print(float val){
-  dtostrf(val, 4, 1, str_temp);
-  print(str_temp);
 }
 
 void print(String msg){
