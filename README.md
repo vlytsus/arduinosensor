@@ -1,11 +1,12 @@
+![Arduino Sensor GP2Y1010AU0F arduinosensor.tumblr.com](https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Arduino_Logo.svg/320px-Arduino_Logo.svg.png)
 # [Arduino Sensor Project](http://arduinosensor.tumblr.com)
 ## [arduinosensor.tumblr.com](http://arduinosensor.tumblr.com)
 
-***
-
 Arduino PM2.5 / PM10 Pollution Sensor based on Sharp Optical Dust Sensor GP2Y1010AU0F Check articles about air pollution and description of my arduino project at http://arduinosensor.tumblr.com/
 
-************* GP2Y1010AU0F Scharp Dust Sensor *****************
+***
+
+### GP2Y1010AU0F Scharp Dust Sensor
 
 Dust sensor calculates dust density based on reflected 
 infrared light from IR diode. Light brightness coresponds 
