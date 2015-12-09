@@ -37,3 +37,9 @@ AQI Index could be clculated as
     ---------|---------|-----------
      250-500 |  > 300  |  Serious
     ---------|---------|-----------
+
+Please note that this program is adapted for waveshare GP2Y1010AU0F adapter board for Arduino.
+Board inverts voltage to turn infrared led on/off and has signal 1/10 divider.
+So to turn-on the ILED you should call digitalWrite(PIN_LED, HIGH); and to switch-off digitalWrite(PIN_LED, LOW);
+Details & sample code you could find on waweshare WIKI page: [http://www.waveshare.com/wiki/Dust_Sensor](http://www.waveshare.com/wiki/Dust_Sensor)
+![Arduino Sensor GP2Y1010AU0F arduinosensor.tumblr.com](http://www.waveshare.com/w/upload/f/fd/Dust-Sensor-intro.jpg)
