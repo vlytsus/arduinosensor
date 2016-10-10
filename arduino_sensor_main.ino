@@ -58,7 +58,7 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 #define SERIAL_PRINT    true
 #define RAW_OUTPUT_MODE false // if true then raw analog data 0-1023 will be printed
 
-#define CALIBRATION 0.6
+#define CALIBRATION 0.6 //is required to set sensor output voltage for minimum dust sensity 0 mg/m3 according to Fig3 of GP2Y1010AU0F specification 
 
 //by default this program is configured for Waveshare Dust Sensor board
 //if you use GP2Y1010AU0F only then uncomment following line
@@ -87,7 +87,7 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 //
 //    Vo = ADC_sample * V_adc_base / ADC_resolution
 
-float a_correction = (ADC_BASE_V / ADC_RESOLUTION);
+float a_correction = (ADC_BASE_V / ADC_RESOLUTION) * VOLT_CORRECTION;
 
 unsigned int stack[STACK_SIZE+1];// stack is used to calculate middle value for display output
 unsigned int stackIter; // current stack iteration
@@ -139,7 +139,7 @@ void loop(void){
 }
 
 float calculateDust(){
-  float voltage = getAverageRawSamples() * VOLT_CORRECTION * a_correction + CALIBRATION;
+  float voltage = getAverageRawSamples() * a_correction + CALIBRATION;
   return 0.17 * voltage - 0.0999;
 }
  
