@@ -37,7 +37,7 @@
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
-#define V_REF            5000.0  //1100 arduino reference voltage for ADC
+#define V_REF            5.0  //1100 arduino reference voltage for ADC
 #define ADC_RESOLUTION   1024.0
 
 #define PIN_LED          7
@@ -106,7 +106,7 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 // Let's calculate volt correction  coefficient to use for Vo calculation later
 // Vo = V_correction * ADC_sample
 // We also need to use DIV_CORRECTION because Waveshare board uses voltage divider 1k/10k
-float V_correction = DIV_CORRECTION * V_REF / ADC_RESOLUTION / 1000;
+float V_correction = DIV_CORRECTION * V_REF / ADC_RESOLUTION;
 
 ///////////////////////////////////////////
 /// Start calibraion, because it is required to set minimum sensor output voltage 0.6V for 0 mg/m3 and 3.62V for max pollution (according to Fig3 of GP2Y1010AU0F specification)
@@ -123,12 +123,12 @@ unsigned int stackIter; // current stack iteration
 ///////////////////////////////////////////////////
 // Calculation refresh interval used to not print data too frequently.
 unsigned int refresh;
-#define SLEEP 5000 //sleep after print
+#define SLEEP 10000 //sleep after print
 
 void setup() {
   initLCD();
     
-  if(V_REF < 4000)
+  if(V_REF < 4)
     analogReference(INTERNAL);
  
   pinMode(PIN_LED, OUTPUT);
@@ -182,7 +182,7 @@ void loop(void){
        print(getAverageRawSamples());
      } else {
        print(calculateDust());
-       delay(SLEEP);
+       if(!DEBUG_MODE)delay(SLEEP);
      }
    }
    stackIter++;
@@ -195,7 +195,7 @@ int calculateDust(){
  
 float getAverageRawSamples(){
    //calculate middle value from stack array
-   int midVal = 0;
+   float midVal = 0;
    for(int i = 0; i < STACK_SIZE ; i++){
      midVal += stack[i]; 
    }
